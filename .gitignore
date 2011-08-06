@@ -1,0 +1,13 @@
+# Copyrighted stuff you need to obtain on your own.
+textures/
+map.bsp
+
+# From QtCreator
+CMakeLists.txt.user
+
+# Some command line users use this
+build/
+
+# Compiled program
+bspviewer
+bspviewer.exe
