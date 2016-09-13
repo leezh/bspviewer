@@ -105,7 +105,7 @@ void Bezier::tesselate(int L, Vertex* controls)
         for (int j = 0; j <= L; ++j)
         {
             float a = (float)j / L;
-            float b = 1.0 - a;
+            float b = 1.f - a;
 
             vertexArray[i * L1 + j] = temp[0] * b * b + temp[1] * 2 * b * a + temp[2] * a * a;
         }
@@ -187,10 +187,11 @@ Map::Map()
     {
         GLint length;
         glGetShaderiv(vertShader, GL_INFO_LOG_LENGTH, &length);
-        char log[length + 1];
+        char* log = new char[length + 1];
         log[length] = '\0';
         glGetShaderInfoLog(vertShader, length, &length, log);
         std::cout << log << std::endl;
+		delete[] log;
         return;
     }
 
@@ -202,11 +203,12 @@ Map::Map()
     {
         GLint length;
         glGetShaderiv(fragShader, GL_INFO_LOG_LENGTH, &length);
-        char log[length + 1];
+		char* log = new char[length + 1];
         log[length] = '\0';
         glGetShaderInfoLog(fragShader, length, &length, log);
         std::cout << log << std::endl;
         glDeleteShader(vertShader);
+		delete[] log;
         return;
     }
 
@@ -229,10 +231,11 @@ Map::Map()
     {
         GLint length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-        char log[length + 1];
+		char* log = new char[length + 1];
         log[length] = '\0';
         glGetProgramInfoLog(program, length, &length, log);
         std::cout << log << std::endl;
+		delete[] log;
         return;
     }
 

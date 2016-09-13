@@ -7,11 +7,13 @@ endif()
 project(bspviewer CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+file(GLOB CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/libs/*")
 
 find_package(PhysFS REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(SFML 2 REQUIRED system window graphics)
+find_path(GLM_INCLUDE_DIR glm/glm.hpp HINTS CMAKE_PREFIX_PATH)
 
 set(bspviewer_src
 	src/main.cpp
@@ -33,6 +35,7 @@ target_include_directories(bspviewer PUBLIC
 	${PHYSFS_INCLUDE_DIR}
 	${GLEW_INCLUDE_DIRS}
 	${SFML_INCLUDE_DIR}
+	${GLM_INCLUDE_DIR}
 	"${CMAKE_SOURCE_DIR}/libs"
 )
 target_link_libraries(bspviewer

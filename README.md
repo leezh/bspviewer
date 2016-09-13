@@ -8,15 +8,19 @@ Almost everything here was based off the file format specifications found online
 
 Ensure that the following packages and their development files are installed properly:
 
-  * GNU GCC C++
-  * GNU Make
+  * GNU GCC C++ and GNU Make on Linux
+  * MinGW or Visual Studio C++ on Windows
   * CMake
   * SFML
   * PhysicsFS
+  * GLEW
+  * GLM
 
 On Ubuntu they can all be installed using:
 
-    sudo apt install g++ cmake libsfml-dev libphysfs-dev
+    sudo apt install g++ cmake libsfml-dev libphysfs-dev libglew-dev libglm-dev
+
+On Windows you can make a folder called `libs/` and place downloaded dependencies there. There are no official builds for PhysicsFS and may require building before hand.
 
 To build use the following commands:
 
