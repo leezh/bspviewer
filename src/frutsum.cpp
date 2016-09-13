@@ -1,48 +1,61 @@
+#define GLM_SWIZZLE
+#include <iostream>
+#include <glm/glm.hpp>
 #include "frutsum.hpp"
 
-Frutsum::Frutsum(QMatrix4x4 matrix) {
-    for (int i = 0; i < 6; i++) {
-        qreal a, b, c, d;
-        int col = i >> 1;
-        int dir = 1 - 1 * (i & 2);
+Frutsum::Frutsum(glm::mat4 matrix)
+{
+    matrix = glm::transpose(matrix);
+    for (int i = 0; i < 6; i++)
+    {
+        glm::vec4 plane;
 
-        a = matrix(3, 0) + matrix(col, 0) * dir;
-        b = matrix(3, 1) + matrix(col, 1) * dir;
-        c = matrix(3, 2) + matrix(col, 2) * dir;
-        d = matrix(3, 3) + matrix(col, 3) * dir;
-
-        normals[i] = QVector3D(a, b, c);
-        distances[i] = -d / normals[i].length();
-        normals[i].normalize();
+        int row = i >> 1;
+        if (i & 1)
+        {
+            plane = matrix[3] + matrix[row];
+        }
+        else
+        {
+            plane = matrix[3] - matrix[row];
+        }
+        planes[i] = plane / glm::length(plane.xyz());
     }
 }
 
-bool Frutsum::inside(QVector3D pos) {
-    for (int i = 0; i < 6; i++) {
-        if (QVector3D::dotProduct(normals[i], pos) < distances[i]) {
+bool Frutsum::inside(glm::vec3 pos)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        if (glm::dot(planes[i].xyz(), pos) > planes[i].w)
+        {
             return false;
         }
     }
     return true;
 }
 
-bool Frutsum::insideAABB(QVector3D max, QVector3D min) {
-    for (int i = 0; i < 6; i++) {
-        QVector3D pVert = max;
-        if (normals[i].x() < 0)
-            pVert.setX(min.x());
-        if (normals[i].y() < 0)
-            pVert.setY(min.y());
-        if (normals[i].z() < 0)
-            pVert.setZ(min.z());
+bool Frutsum::insideAABB(glm::vec3 max, glm::vec3 min)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        glm::vec3 pVert = max;
+        if (planes[i].x < 0)
+            pVert.x = min.x;
+        if (planes[i].y < 0)
+            pVert.y = min.y;
+        if (planes[i].z < 0)
+            pVert.z = min.z;
 
-        if (QVector3D::dotProduct(normals[i], pVert) < distances[i]) {
+        if (glm::dot(planes[i].xyz(), pVert) + planes[i].w <= 0)
+        {
             return false;
         }
     }
     return true;
 }
 
-bool Frutsum::insideAABB(int *max, int *min) {
-    return insideAABB(QVector3D(max[0], max[1], max[2]), QVector3D(min[0], min[1], min[2]));
+bool Frutsum::insideAABB(int *max, int *min)
+{
+    return insideAABB(glm::vec3(max[0], max[1], max[2]), glm::vec3(min[0], min[1], min[2]));
 }

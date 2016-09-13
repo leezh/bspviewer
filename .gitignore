@@ -1,13 +1,25 @@
-# Copyrighted stuff you need to obtain on your own.
-textures/
-map.bsp
+# C++
+*.o
+*.obj
+*.gch
+*.pch
 
-# From QtCreator
-CMakeLists.txt.user
-
-# Some command line users use this
+# CMake
 build/
+CMakeLists.txt.user*
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Makefile
+cmake_install.cmake
 
-# Compiled program
-bspviewer
-bspviewer.exe
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

@@ -1,17 +1,18 @@
 #ifndef FRUTSUM_HPP
 #define FRUTSUM_HPP
 
-#include <QVector3D>
-#include <QMatrix4x4>
+#include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 
-class Frutsum {
+class Frutsum
+{
 private:
-    QVector3D normals[6];
-    qreal distances[6];
+    glm::vec4 planes[6];
+
 public:
-    Frutsum(QMatrix4x4 matrix);
-    bool inside(QVector3D pos);
-    bool insideAABB(QVector3D max, QVector3D min);
+    Frutsum(glm::mat4 matrix);
+    bool inside(glm::vec3 pos);
+    bool insideAABB(glm::vec3 max, glm::vec3 min);
     bool insideAABB(int *max, int *min);
 };
 
