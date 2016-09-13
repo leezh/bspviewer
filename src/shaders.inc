@@ -22,18 +22,9 @@ varying vec3 fragNormal;
 uniform sampler2D texture;
 uniform sampler2D lightmap;
 uniform bool uselightmap;
-//uniform bool usedynamic;
-//uniform vec3 ambient;
-//uniform vec3 directional;
-//uniform vec3 direction;
 
 void main() {
 	vec4 texel = texture2D(texture, gl_TexCoord[0].st);
-//	if (usedynamic)
-//	{
-//		float intensity = max(dot(normalize(fragNormal), direction), 0.0);
-//		texel = texel * vec4(intensity * directional + ambient, 1) * 1.5;
-//	}
 	if (uselightmap)
 	{
 		texel = texel * 3.0 * texture2D(lightmap, gl_TexCoord[1].st);

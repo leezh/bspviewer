@@ -562,22 +562,6 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
         glUniform1i(programLoc["uselightmap"], GL_FALSE);
     }
 
-    // Disabled as it is still very buggy.
-    /*
-    if (false)
-    {
-        LightVol lightVol = findLightVol(face->lightMapOrigin);
-        glUniform1i(programLoc["usedynamic"], GL_TRUE);
-        glUniform3fv(programLoc["ambeint"], 1, &lightVol.ambient[0]);
-        glUniform3fv(programLoc["directional"], 1, &lightVol.directional[0]);
-        glUniform3fv(programLoc["direction"], 1, &lightVol.direction[0]);
-    }
-    else
-    {
-        glUniform1i(programLoc["usedynamic"], GL_FALSE);
-    }
-    */
-
     if (face->type == 1 || face->type == 3)
     {
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->vertexOffset].position);
