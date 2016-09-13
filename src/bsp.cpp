@@ -307,6 +307,9 @@ bool Map::load(std::string filename)
                     if (shader.texture.loadFromStream(filestream))
                     {
                         shader.render = true;
+#if SFML_VERSION_MAJOR > 2 || (SFML_VERSION_MAJOR == 2 && SFML_VERSION_MINOR >= 4)
+                        shader.texture.generateMipmap();
+#endif
                         shader.texture.setRepeated(true);
                         shader.texture.setSmooth(true);
                     }
