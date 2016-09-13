@@ -472,9 +472,9 @@ bool Map::load(std::string filename)
 
     PHYSFS_close(file);
 
-    lightVolSizeX = floor(modelArray[0].max.x / 64) - ceil(modelArray[0].min.x / 64) + 1;
-    lightVolSizeY = floor(modelArray[0].max.y / 64) - ceil(modelArray[0].min.y / 64) + 1;
-    lightVolSizeZ = floor(modelArray[0].max.z / 128) - ceil(modelArray[0].min.z / 128) + 1;
+    lightVolSizeX = int(floor(modelArray[0].max.x / 64) - ceil(modelArray[0].min.x / 64) + 1);
+    lightVolSizeY = int(floor(modelArray[0].max.y / 64) - ceil(modelArray[0].min.y / 64) + 1);
+    lightVolSizeZ = int(floor(modelArray[0].max.z / 128) - ceil(modelArray[0].min.z / 128) + 1);
 
     facePatchArray.resize(faceCount);
     patchArray.reserve(patchCount);
@@ -482,7 +482,7 @@ bool Map::load(std::string filename)
     {
         if (faceArray[i].type == 2)
         {
-            int patchIndex = patchArray.size();
+            int patchIndex = int(patchArray.size());
             patchArray.push_back(Patch());
             facePatchArray[i] = patchIndex;
             patchArray[patchIndex].generate(i, this);
@@ -524,9 +524,9 @@ LightVol Map::findLightVol(glm::vec3& pos)
 {
     if (lightVolArray.size() == 0)
         return LightVol();
-    int cellX = floor(pos.x / 64) - ceil(modelArray[0].min.x / 64);
-    int cellY = floor(pos.y / 64) - ceil(modelArray[0].min.y / 64);
-    int cellZ = floor(pos.z / 128) - ceil(modelArray[0].min.z / 128);
+    int cellX = int(floor(pos.x / 64) - ceil(modelArray[0].min.x / 64));
+    int cellY = int(floor(pos.y / 64) - ceil(modelArray[0].min.y / 64));
+    int cellZ = int(floor(pos.z / 128) - ceil(modelArray[0].min.z / 128));
     cellX = std::min(std::max(cellX, 0), (int)lightVolSizeX);
     cellY = std::min(std::max(cellY, 0), (int)lightVolSizeY);
     cellZ = std::min(std::max(cellZ, 0), (int)lightVolSizeZ);
