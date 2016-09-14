@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
     glm::vec3 position(0.f, 0.f, 0.f);
     float yaw = 0.f;
     float pitch = 0.f;
+    bool collision = false;
 
     while (window.isOpen())
     {
@@ -108,6 +109,18 @@ int main(int argc, char *argv[])
                 if (pitch > 90.f) pitch = 90.f;
                 if (pitch < -90.f) pitch = -90.f;
                 break;
+            case sf::Event::KeyPressed:
+                switch (event.key.code)
+                {
+                case sf::Keyboard::E:
+                    collision = !collision;
+                    break;
+                case sf::Keyboard::Escape:
+                    window.close();
+                    break;
+                }
+
+                break;
             default:
                 break;
             }
@@ -121,6 +134,7 @@ int main(int argc, char *argv[])
         glm::vec3 up = glm::vec3(0.f, 0.f, 1.f);
 
         float speed = 200.f;
+        glm::vec3 oldPos = position;
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
             position += forward * elapsed * speed;
@@ -134,8 +148,9 @@ int main(int argc, char *argv[])
             position += up * elapsed * speed;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift))
             position -= up * elapsed * speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-            window.close();
+
+        if (collision)
+            position = map.traceWorld(position, oldPos, 10.f);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

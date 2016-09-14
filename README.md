@@ -43,6 +43,7 @@ To load a map use: `bspviewer /path/to/baseq3/ /maps/q3ctf1.bsp`
   * WASD for directional movement
   * Space to move up
   * Shift to move down
+  * E to toggle collision
   * Escape to quit
 
 ## License

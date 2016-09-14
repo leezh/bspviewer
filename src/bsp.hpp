@@ -134,12 +134,13 @@ struct RenderPass {
 };
 
 struct TracePass {
-    glm::vec3 pos;
+    glm::vec3 position;
+    glm::vec3 oldPosition;
     float radius;
 
     std::vector<bool> tracedBrushes;
 
-    TracePass(Map* parent, const glm::vec3 &inPos, float inRadius);
+    TracePass(Map* parent, const glm::vec3 &pos, const glm::vec3 &oldPos, float rad);
 };
 
 class Map
@@ -192,7 +193,7 @@ public:
 
     bool load(std::string fileName);
     void renderWorld(glm::mat4 matrix, glm::vec3 pos);
-    glm::vec3 traceWorld(glm::vec3 pos, float radius);
+    glm::vec3 traceWorld(glm::vec3 pos, glm::vec3 oldPos, float radius);
 
     friend struct Bezier;
     friend struct Patch;

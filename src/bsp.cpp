@@ -28,6 +28,52 @@ enum
     VISDATA
 };
 
+const int CONTENTS_SOLID        = 0x1;
+const int CONTENTS_LAVA         = 0x8;
+const int CONTENTS_SLIME        = 0x10;
+const int CONTENTS_WATER        = 0x20;
+const int CONTENTS_FOG          = 0x40;
+const int CONTENTS_NOTTEAM1     = 0x80;
+const int CONTENTS_NOTTEAM2     = 0x100;
+const int CONTENTS_NOBOTCLIP    = 0x200;
+const int CONTENTS_AREAPORTAL   = 0x8000;
+const int CONTENTS_PLAYERCLIP   = 0x10000;
+const int CONTENTS_MONSTERCLIP  = 0x20000;
+const int CONTENTS_TELEPORTER   = 0x40000;
+const int CONTENTS_JUMPPAD      = 0x80000;
+const int CONTENTS_CLUSTERPORTAL= 0x100000;
+const int CONTENTS_DONOTENTER   = 0x200000;
+const int CONTENTS_BOTCLIP      = 0x400000;
+const int CONTENTS_MOVER        = 0x800000;
+const int CONTENTS_ORIGIN       = 0x1000000;
+const int CONTENTS_BODY         = 0x2000000;
+const int CONTENTS_CORPSE       = 0x4000000;
+const int CONTENTS_DETAIL       = 0x8000000;
+const int CONTENTS_STRUCTURAL   = 0x10000000;
+const int CONTENTS_TRANSLUCENT  = 0x20000000;
+const int CONTENTS_TRIGGER      = 0x40000000;
+const int CONTENTS_NODROP       = 0x80000000;
+
+const int SURF_NODAMAGE     = 0x1;
+const int SURF_SLICK        = 0x2;
+const int SURF_SKY          = 0x4;
+const int SURF_LADDER       = 0x8;
+const int SURF_NOIMPACT     = 0x10;
+const int SURF_NOMARKS      = 0x20;
+const int SURF_FLESH        = 0x40;
+const int SURF_NODRAW       = 0x80;
+const int SURF_HINT         = 0x100;
+const int SURF_SKIP         = 0x200;
+const int SURF_NOLIGHTMAP   = 0x400;
+const int SURF_POINTLIGHT   = 0x800;
+const int SURF_METALSTEPS   = 0x1000;
+const int SURF_NOSTEPS      = 0x2000;
+const int SURF_NONSOLID     = 0x4000;
+const int SURF_LIGHTFILTER  = 0x8000;
+const int SURF_ALPHASHADOW  = 0x10000;
+const int SURF_NODLIGHT     = 0x20000;
+const int SURF_SURFDUST     = 0x40000;
+
 struct Lump
 {
     int offset;
@@ -168,9 +214,10 @@ RenderPass::RenderPass(Map* parent, const glm::vec3& position, const glm::mat4& 
     renderedFaces.resize(parent->faceArray.size(), false);
 }
 
-TracePass::TracePass(Map* parent, const glm::vec3& inPos, float inRadius)
-    : pos(inPos)
-    , radius(inRadius)
+TracePass::TracePass(Map* parent, const glm::vec3& pos, const glm::vec3 &oldPos, float rad)
+    : position(pos)
+    , oldPosition(oldPos)
+    , radius(rad)
 {
     tracedBrushes.resize(parent->brushArray.size(), false);
 }
@@ -286,8 +333,15 @@ bool Map::load(std::string filename)
         Shader shader;
         shader.render = true;
         shader.transparent = false;
-        shader.solid = ((rawshader.contents & 0x10000) != 0);
+        shader.solid = true;
         shader.name = std::string(rawshader.name);
+        if (rawshader.surface & SURF_NONSOLID) shader.solid = false;
+        if (rawshader.contents & CONTENTS_PLAYERCLIP) shader.solid = true;
+        if (rawshader.contents & CONTENTS_TRANSLUCENT) shader.transparent = true;
+        if (rawshader.contents & CONTENTS_LAVA) shader.render = false;
+        if (rawshader.contents & CONTENTS_SLIME) shader.render = false;
+        if (rawshader.contents & CONTENTS_WATER) shader.render = false;
+        if (rawshader.contents & CONTENTS_FOG) shader.render = false;
         if (shader.name == "noshader") shader.render = false;
         if (shader.render)
         {
@@ -313,6 +367,7 @@ bool Map::load(std::string filename)
                         shader.texture.setRepeated(true);
                         shader.texture.setSmooth(true);
                     }
+                    std::cout << shader.name << std::endl;
                 }
                 else
                 {
@@ -673,6 +728,7 @@ void Map::traceBrush(int index, TracePass& pass)
 {
     if (pass.tracedBrushes[index])
         return;
+    pass.tracedBrushes[index] = true;
     Brush* brush = &brushArray[index];
     if (!shaderArray[brush->shader].solid)
         return;
@@ -685,10 +741,16 @@ void Map::traceBrush(int index, TracePass& pass)
         BrushSide* side = &brushSideArray[i + brush->sideOffset];
         Plane* plane = &planeArray[side->plane];
 
-        float dist = glm::dot(plane->normal, pass.pos) - plane->distance - pass.radius;
+        if (glm::dot(plane->normal, pass.oldPosition) - plane->distance < pass.radius)
+            continue;
 
-        if (dist > 0)
+        float dist = glm::dot(plane->normal, pass.position) - plane->distance - pass.radius;
+
+        if (dist > 0.f)
             return;
+
+        if (!shaderArray[side->shader].solid)
+            continue;
 
         if (collidingPlane == NULL || dist > collidingDist)
         {
@@ -699,9 +761,7 @@ void Map::traceBrush(int index, TracePass& pass)
 
     if (collidingPlane == NULL)
         return;
-    pass.pos -= collidingPlane->normal * collidingDist;
-
-    pass.tracedBrushes[index] = true;
+    pass.position -= collidingPlane->normal * collidingDist;
 }
 
 void Map::traceNode(int index, TracePass& pass)
@@ -718,7 +778,7 @@ void Map::traceNode(int index, TracePass& pass)
 
     Node* node = &nodeArray[index];
     Plane* plane = &planeArray[node->plane];
-    float dist = glm::dot(plane->normal, pass.pos) - plane->distance;
+    float dist = glm::dot(plane->normal, pass.position) - plane->distance;
 
     if (dist > -pass.radius)
     {
@@ -731,10 +791,10 @@ void Map::traceNode(int index, TracePass& pass)
     }
 }
 
-glm::vec3 Map::traceWorld(glm::vec3 pos, float radius)
+glm::vec3 Map::traceWorld(glm::vec3 pos, glm::vec3 oldPos, float radius)
 {
-    TracePass pass(this, pos, radius);
+    TracePass pass(this, pos, oldPos, radius);
     traceNode(0, pass);
 
-    return pass.pos;
+    return pass.position;
 }
