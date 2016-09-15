@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstddef>
 #include <array>
 #include <iostream>
 #include <glm/geometric.hpp>
@@ -73,6 +74,11 @@ const int SURF_LIGHTFILTER  = 0x8000;
 const int SURF_ALPHASHADOW  = 0x10000;
 const int SURF_NODLIGHT     = 0x20000;
 const int SURF_SURFDUST     = 0x40000;
+
+const int VertexPosition = offsetof(Vertex, position);
+const int VertexTexCoord = offsetof(Vertex, texCoord);
+const int VertexLMCoord = offsetof(Vertex, lmCoord);
+const int VertexNormalCoord = offsetof(Vertex, normal);
 
 struct Lump
 {
@@ -202,8 +208,13 @@ TracePass::TracePass(Map* parent, const glm::vec3& pos, const glm::vec3 &oldPos,
 
 Map::Map()
     : program(0)
+    , vertexBuffer(0)
+    , meshIndexBuffer(0)
     , bezierLevel(3)
 {
+    glGenBuffers(1, &vertexBuffer);
+    glGenBuffers(1, &meshIndexBuffer);
+
     GLint status;
 
     GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
@@ -428,6 +439,9 @@ bool Map::load(std::string filename)
             meshIndexArray[offset + 5] = (i    ) * L1 + (j    );
         }
     }
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshIndexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndexArray.size() * sizeof(GLuint), &meshIndexArray[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     int effectCount = header.lumps[EFFECT].size / sizeof(Effect);
     PHYSFS_seek(file, header.lumps[EFFECT].offset);
@@ -504,6 +518,9 @@ bool Map::load(std::string filename)
             }
         }
     }
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexArray.size() * sizeof(Vertex), &vertexArray[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     int lightMapCount = header.lumps[LIGHTMAP].size / (128 * 128 * 3);
     PHYSFS_seek(file, header.lumps[LIGHTMAP].offset);
@@ -656,21 +673,21 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
 
     if (face->type == Face::Brush || face->type == Face::Model)
     {
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->vertexOffset].position);
-        //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), &vertexArray[face->vertexOffset].normal);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->vertexOffset].texCoord);
-        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->vertexOffset].lmCoord);
-        glDrawElements(GL_TRIANGLES, face->meshIndexCount, GL_UNSIGNED_INT, &meshIndexArray[face->meshIndexOffset]);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexPosition));
+        //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexNormal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexTexCoord));
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexLMCoord));
+        glDrawElements(GL_TRIANGLES, face->meshIndexCount, GL_UNSIGNED_INT, (void*)(long)(face->meshIndexOffset * sizeof(GLuint)));
     }
     else if (face->type == Face::Bezier)
     {
         for (int i = 0; i < face->bezierArray.size(); i++)
         {
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->bezierArray[i]].position);
-            //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), &vertexArray[face->bezierArray[i]].normal);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->bezierArray[i]].texCoord);
-            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->bezierArray[i]].lmCoord);
-            glDrawElements(GL_TRIANGLES, bezierIndexSize, GL_UNSIGNED_INT, &meshIndexArray[bezierIndexOffset]);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexPosition));
+            //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexNormal));
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexTexCoord));
+            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexLMCoord));
+            glDrawElements(GL_TRIANGLES, bezierIndexSize, GL_UNSIGNED_INT, (void*)(long)(bezierIndexOffset * sizeof(GLuint)));
         }
     }
 
@@ -721,6 +738,8 @@ void Map::renderWorld(glm::mat4 matrix, glm::vec3 pos)
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshIndexBuffer);
 
     if (nodeArray.size() == 0)
         return;
@@ -746,6 +765,8 @@ void Map::renderWorld(glm::mat4 matrix, glm::vec3 pos)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     renderNode(0, pass, false);
 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);

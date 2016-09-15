@@ -135,6 +135,8 @@ class Map
 {
 protected:
     GLuint program;
+    GLuint vertexBuffer;
+    GLuint meshIndexBuffer;
     std::map<std::string, GLuint> programLoc;
     VisData visData;
     int bezierLevel;
