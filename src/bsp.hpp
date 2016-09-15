@@ -100,11 +100,7 @@ struct VisData {
 };
 
 struct Bezier {
-    int level;
     std::vector<Vertex> vertexArray;
-    std::vector<int> indexArray;
-    std::vector<int> rowCountArray;
-    std::vector<int> rowIndexArray;
 
     void tesselate(int L, Vertex *controls);
 };
@@ -149,6 +145,9 @@ protected:
     GLuint program;
     VisData visData;
     std::map<std::string, GLuint> programLoc;
+    int bezierLevel;
+    int bezierIndexOffset;
+    int bezierIndexSize;
 
     std::vector<Plane> planeArray;
     std::vector<Node> nodeArray;
@@ -159,7 +158,7 @@ protected:
     std::vector<Brush> brushArray;
     std::vector<BrushSide> brushSideArray;
     std::vector<Vertex> vertexArray;
-    std::vector<int> meshVertexArray;
+    std::vector<int> meshIndexArray;
     std::vector<Effect> effectArray;
     std::vector<Face> faceArray;
     std::vector<sf::Texture> lightMapArray;

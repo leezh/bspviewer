@@ -123,7 +123,6 @@ Vertex operator*(const Vertex& v1, const float& d)
 
 void Bezier::tesselate(int L, Vertex* controls)
 {
-    level = L;
     int L1 = L + 1;
 
     vertexArray.resize(L1 * L1);
@@ -154,22 +153,6 @@ void Bezier::tesselate(int L, Vertex* controls)
             float b = 1.f - a;
 
             vertexArray[i * L1 + j] = temp[0] * b * b + temp[1] * 2 * b * a + temp[2] * a * a;
-        }
-    }
-
-    indexArray.resize(L * L * 6);
-    for (int i = 0; i < L; ++i)
-    {
-        for (int j = 0; j < L; ++j)
-        {
-            int offset = (i * L + j) * 6;
-            indexArray[offset + 0] = (i    ) * L1 + (j    );
-            indexArray[offset + 1] = (i    ) * L1 + (j + 1);
-            indexArray[offset + 2] = (i + 1) * L1 + (j + 1);
-
-            indexArray[offset + 3] = (i + 1) * L1 + (j + 1);
-            indexArray[offset + 4] = (i + 1) * L1 + (j    );
-            indexArray[offset + 5] = (i    ) * L1 + (j    );
         }
     }
 }
@@ -221,6 +204,8 @@ TracePass::TracePass(Map* parent, const glm::vec3& pos, const glm::vec3 &oldPos,
 }
 
 Map::Map()
+    : program(0)
+    , bezierLevel(3)
 {
     GLint status;
 
@@ -432,9 +417,26 @@ bool Map::load(std::string filename)
 
     int meshVertexCount = header.lumps[MESHVERTEX].size / sizeof(int);
     PHYSFS_seek(file, header.lumps[MESHVERTEX].offset);
-    meshVertexArray.resize(meshVertexCount);
+    bezierIndexOffset = meshVertexCount;
+    bezierIndexSize = bezierLevel * bezierLevel * 6;
+    meshIndexArray.resize(meshVertexCount + bezierIndexSize);
     if (meshVertexCount > 0)
-        PHYSFS_read(file, &meshVertexArray[0], sizeof(int), meshVertexCount);
+        PHYSFS_read(file, &meshIndexArray[0], sizeof(int), meshVertexCount);
+    for (int i = 0; i < bezierLevel; ++i)
+    {
+        int L1 = bezierLevel + 1;
+        for (int j = 0; j < bezierLevel; ++j)
+        {
+            int offset = bezierIndexOffset + (i * bezierLevel + j) * 6;
+            meshIndexArray[offset + 0] = (i    ) * L1 + (j    );
+            meshIndexArray[offset + 1] = (i    ) * L1 + (j + 1);
+            meshIndexArray[offset + 2] = (i + 1) * L1 + (j + 1);
+
+            meshIndexArray[offset + 3] = (i + 1) * L1 + (j + 1);
+            meshIndexArray[offset + 4] = (i + 1) * L1 + (j    );
+            meshIndexArray[offset + 5] = (i    ) * L1 + (j    );
+        }
+    }
 
     int effectCount = header.lumps[EFFECT].size / sizeof(Effect);
     PHYSFS_seek(file, header.lumps[EFFECT].offset);
@@ -621,7 +623,7 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
         //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), &vertexArray[face->vertexOffset].normal);
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->vertexOffset].texCoord);
         glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertexArray[face->vertexOffset].lmCoord);
-        glDrawElements(GL_TRIANGLES, face->meshVertexCount, GL_UNSIGNED_INT, &meshVertexArray[face->meshVertexOffset]);
+        glDrawElements(GL_TRIANGLES, face->meshVertexCount, GL_UNSIGNED_INT, &meshIndexArray[face->meshVertexOffset]);
     }
     else if (face->type == 2)
     {
@@ -633,7 +635,7 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
             //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), &bezier->vertexArray[0].normal);
             glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &bezier->vertexArray[0].texCoord);
             glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &bezier->vertexArray[0].lmCoord);
-            glDrawElements(GL_TRIANGLES, bezier->indexArray.size(), GL_UNSIGNED_INT, &bezier->indexArray[0]);
+            glDrawElements(GL_TRIANGLES, bezierIndexSize, GL_UNSIGNED_INT, &meshIndexArray[bezierIndexOffset]);
         }
     }
 
