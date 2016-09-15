@@ -71,20 +71,24 @@ struct Effect {
 };
 
 struct Face {
+    enum Type
+    {
+        Brush,
+        Model,
+        Bezier,
+        None
+    };
+
+    Type type;
     int shader;
     int effect;
-    int type;
     int vertexOffset;
     int vertexCount;
-    int meshVertexOffset;
-    int meshVertexCount;
+    int meshIndexOffset;
+    int meshIndexCount;
     int lightMap;
-    int lightMapStart[2];
-    int lightMapSize[2];
-    glm::vec3 lightMapOrigin;
-    glm::vec3 lightMapVecs[2];
-    glm::vec3 normal;
-    int size[2];
+    std::vector<int> bezierArray;
+    int bezierSize[2];
 };
 
 struct LightVol {
@@ -97,18 +101,6 @@ struct VisData {
     int clusterCount;
     int bytesPerCluster;
     std::vector<bool> data;
-};
-
-struct Bezier {
-    std::vector<Vertex> vertexArray;
-
-    void tesselate(int L, Vertex *controls);
-};
-
-struct Patch {
-    std::vector<Bezier> bezierArray;
-
-    void generate(int faceIndex, Map *parent);
 };
 
 struct Shader {
@@ -143,8 +135,8 @@ class Map
 {
 protected:
     GLuint program;
-    VisData visData;
     std::map<std::string, GLuint> programLoc;
+    VisData visData;
     int bezierLevel;
     int bezierIndexOffset;
     int bezierIndexSize;
@@ -158,19 +150,18 @@ protected:
     std::vector<Brush> brushArray;
     std::vector<BrushSide> brushSideArray;
     std::vector<Vertex> vertexArray;
-    std::vector<int> meshIndexArray;
+    std::vector<GLuint> meshIndexArray;
     std::vector<Effect> effectArray;
     std::vector<Face> faceArray;
     std::vector<sf::Texture> lightMapArray;
     std::vector<LightVol> lightVolArray;
-
     std::vector<Shader> shaderArray;
-    std::vector<int> facePatchArray;
-    std::vector<Patch> patchArray;
 
     unsigned int lightVolSizeX;
     unsigned int lightVolSizeY;
     unsigned int lightVolSizeZ;
+
+    void tesselate(int controlOffset, int controlWidth, Vertex* output);
 
     bool clusterVisible(int test, int cam);
     int findLeaf(glm::vec3 &pos);
