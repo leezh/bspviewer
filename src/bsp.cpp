@@ -128,11 +128,11 @@ void Bezier::tesselate(int L, Vertex* controls)
 
     vertexArray.resize(L1 * L1);
 
-    for (int i = 0; i <= L; ++i)
+    for (int j = 0; j <= L; ++j)
     {
-        float a = (float)i / L;
+        float a = (float)j / L;
         float b = 1.f - a;
-        vertexArray[i] = controls[0] * b * b + controls[3] * 2 * b * a + controls[6] * a * a;
+        vertexArray[j] = controls[0] * b * b + controls[3] * 2 * b * a + controls[6] * a * a;
     }
 
     for (int i = 1; i <= L; ++i)
@@ -157,22 +157,20 @@ void Bezier::tesselate(int L, Vertex* controls)
         }
     }
 
-    indexArray.resize(L * L1 * 2);
-    for (int row = 0; row < L; ++row)
+    indexArray.resize(L * L * 6);
+    for (int i = 0; i < L; ++i)
     {
-        for (int col = 0; col <= L; ++col)
+        for (int j = 0; j < L; ++j)
         {
-            indexArray[(row * L1 + col) * 2 + 1] = row * L1 + col;
-            indexArray[(row * L1 + col) * 2] = (row + 1) * L1 + col;
-        }
-    }
+            int offset = (i * L + j) * 6;
+            indexArray[offset + 0] = (i    ) * L1 + (j    );
+            indexArray[offset + 1] = (i    ) * L1 + (j + 1);
+            indexArray[offset + 2] = (i + 1) * L1 + (j + 1);
 
-    rowCountArray.resize(level);
-    rowIndexArray.resize(level);
-    for (int row = 0; row < level; ++row)
-    {
-        rowCountArray[row] = 2 * (level + 1);
-        rowIndexArray[row] = row * 2 * (level + 1);
+            indexArray[offset + 3] = (i + 1) * L1 + (j + 1);
+            indexArray[offset + 4] = (i + 1) * L1 + (j    );
+            indexArray[offset + 5] = (i    ) * L1 + (j    );
+        }
     }
 }
 
@@ -238,7 +236,7 @@ Map::Map()
         log[length] = '\0';
         glGetShaderInfoLog(vertShader, length, &length, log);
         std::cout << log << std::endl;
-		delete[] log;
+        delete[] log;
         return;
     }
 
@@ -250,12 +248,12 @@ Map::Map()
     {
         GLint length;
         glGetShaderiv(fragShader, GL_INFO_LOG_LENGTH, &length);
-		char* log = new char[length + 1];
+        char* log = new char[length + 1];
         log[length] = '\0';
         glGetShaderInfoLog(fragShader, length, &length, log);
         std::cout << log << std::endl;
         glDeleteShader(vertShader);
-		delete[] log;
+        delete[] log;
         return;
     }
 
@@ -278,11 +276,11 @@ Map::Map()
     {
         GLint length;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-		char* log = new char[length + 1];
+        char* log = new char[length + 1];
         log[length] = '\0';
         glGetProgramInfoLog(program, length, &length, log);
         std::cout << log << std::endl;
-		delete[] log;
+        delete[] log;
         return;
     }
 
@@ -635,15 +633,7 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
             //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), &bezier->vertexArray[0].normal);
             glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &bezier->vertexArray[0].texCoord);
             glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &bezier->vertexArray[0].lmCoord);
-            if (face->meshVertexCount != 0)
-            {
-                std::cout << "Hi There!" << std::endl;
-                glDrawElements(GL_TRIANGLES, face->meshVertexCount, GL_UNSIGNED_INT, &meshVertexArray[face->meshVertexOffset]);
-            }
-            for (int l = 0; l < bezier->level; l++)
-            {
-                glDrawElements(GL_TRIANGLE_STRIP, bezier->rowCountArray[l], GL_UNSIGNED_INT, &bezier->indexArray[bezier->rowIndexArray[l]]);
-            }
+            glDrawElements(GL_TRIANGLES, bezier->indexArray.size(), GL_UNSIGNED_INT, &bezier->indexArray[0]);
         }
     }
 
