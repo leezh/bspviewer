@@ -1,4 +1,3 @@
-#define GLM_SWIZZLE
 #include <iostream>
 #include <glm/glm.hpp>
 #include "frutsum.hpp"

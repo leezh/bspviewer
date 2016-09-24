@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <array>
 #include <iostream>
-#include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <physfs.h>
 #include "filestream.hpp"

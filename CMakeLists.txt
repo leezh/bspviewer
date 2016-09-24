@@ -31,6 +31,10 @@ target_compile_features(bspviewer PUBLIC
 	cxx_raw_string_literals
 	cxx_defaulted_move_initializers
 )
+target_compile_definitions(bspviewer PUBLIC
+	GLM_FORCE_CXX11
+	GLM_FORCE_SWIZZLE
+)
 target_include_directories(bspviewer PUBLIC
 	${PHYSFS_INCLUDE_DIR}
 	${GLEW_INCLUDE_DIRS}
