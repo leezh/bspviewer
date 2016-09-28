@@ -614,15 +614,15 @@ int Map::findLeaf(glm::vec3& pos)
     int index = 0;
     while (index >= 0)
     {
-        Node* node = &nodeArray[index];
-        Plane* plane = &planeArray[node->plane];
-        if (glm::dot(plane->normal, pos) >= plane->distance)
+        Node& node = nodeArray[index];
+        Plane& plane = planeArray[node.plane];
+        if (glm::dot(plane.normal, pos) >= plane.distance)
         {
-            index = node->children[0];
+            index = node.children[0];
         }
         else
         {
-            index = node->children[1];
+            index = node.children[1];
         }
     };
     return ~index;
@@ -648,20 +648,20 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
 {
     if (pass.renderedFaces[index])
         return;
-    Face* face = &faceArray[index];
-    if (shaderArray[face->shader].transparent == solid)
+    Face& face = faceArray[index];
+    if (shaderArray[face.shader].transparent == solid)
         return;
-    if (!shaderArray[face->shader].render)
+    if (!shaderArray[face.shader].render)
         return;
 
     glFrontFace(GL_CW);
     glActiveTexture(GL_TEXTURE0);
-    sf::Texture::bind(&shaderArray[face->shader].texture);
+    sf::Texture::bind(&shaderArray[face.shader].texture);
     glActiveTexture(GL_TEXTURE1);
 
-    if (face->lightMap >= 0)
+    if (face.lightMap >= 0)
     {
-        sf::Texture::bind(&lightMapArray[face->lightMap]);
+        sf::Texture::bind(&lightMapArray[face.lightMap]);
         glUniform1i(programLoc["uselightmap"], GL_TRUE);
     }
     else
@@ -670,22 +670,22 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
         glUniform1i(programLoc["uselightmap"], GL_FALSE);
     }
 
-    if (face->type == Face::Brush || face->type == Face::Model)
+    if (face.type == Face::Brush || face.type == Face::Model)
     {
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexPosition));
-        //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexNormal));
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexTexCoord));
-        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->vertexOffset * sizeof(Vertex) + VertexLMCoord));
-        glDrawElements(GL_TRIANGLES, face->meshIndexCount, GL_UNSIGNED_INT, (void*)(long)(face->meshIndexOffset * sizeof(GLuint)));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexPosition));
+        //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexNormal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexTexCoord));
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexLMCoord));
+        glDrawElements(GL_TRIANGLES, face.meshIndexCount, GL_UNSIGNED_INT, (void*)(long)(face.meshIndexOffset * sizeof(GLuint)));
     }
-    else if (face->type == Face::Bezier)
+    else if (face.type == Face::Bezier)
     {
-        for (int i = 0; i < face->bezierArray.size(); i++)
+        for (int i = 0; i < face.bezierArray.size(); i++)
         {
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexPosition));
-            //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexNormal));
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexTexCoord));
-            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face->bezierArray[i] * sizeof(Vertex) + VertexLMCoord));
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexPosition));
+            //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexNormal));
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexTexCoord));
+            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexLMCoord));
             glDrawElements(GL_TRIANGLES, bezierIndexSize, GL_UNSIGNED_INT, (void*)(long)(bezierIndexOffset * sizeof(GLuint)));
         }
     }
@@ -693,42 +693,39 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
     pass.renderedFaces[index] = true;
 }
 
-void Map::renderLeaf(int index, RenderPass& pass, bool solid)
-{
-    Leaf* leaf = &leafArray[index];
-    if (!clusterVisible(leaf->cluster, pass.cluster))
-        return;
-    if (!pass.frutsum.insideAABB(leaf->max, leaf->min))
-        return;
-    for (int i = 0; i < leaf->faceCount; i++)
-    {
-        int faceIndex = leafFaceArray[i + leaf->faceOffset];
-        renderFace(faceIndex, pass, solid);
-    }
-}
-
 void Map::renderNode(int index, RenderPass& pass, bool solid)
 {
     if (index < 0)
     {
-        renderLeaf(-index - 1, pass, solid);
+        Leaf& leaf = leafArray[~index];
+        if (!clusterVisible(leaf.cluster, pass.cluster))
+            return;
+        if (!pass.frutsum.insideAABB(leaf.max, leaf.min))
+            return;
+
+        for (int i = 0; i < leaf.faceCount; i++)
+        {
+            int faceIndex = leafFaceArray[i + leaf.faceOffset];
+            renderFace(faceIndex, pass, solid);
+        }
         return;
     }
 
-    Node* node = &nodeArray[index];
-    Plane* plane = &planeArray[node->plane];
-    if (!pass.frutsum.insideAABB(node->max, node->min))
+    Node& node = nodeArray[index];
+    if (!pass.frutsum.insideAABB(node.max, node.min))
         return;
 
-    if ((glm::dot(plane->normal, pass.pos) >= plane->distance) == solid)
+    Plane& plane = planeArray[node.plane];
+
+    if ((glm::dot(plane.normal, pass.pos) >= plane.distance) == solid)
     {
-        renderNode(node->children[0], pass, solid);
-        renderNode(node->children[1], pass, solid);
+        renderNode(node.children[0], pass, solid);
+        renderNode(node.children[1], pass, solid);
     }
     else
     {
-        renderNode(node->children[1], pass, solid);
-        renderNode(node->children[0], pass, solid);
+        renderNode(node.children[1], pass, solid);
+        renderNode(node.children[0], pass, solid);
     }
 }
 
@@ -776,32 +773,32 @@ void Map::traceBrush(int index, TracePass& pass)
     if (pass.tracedBrushes[index])
         return;
     pass.tracedBrushes[index] = true;
-    Brush* brush = &brushArray[index];
-    if (!shaderArray[brush->shader].solid)
+    Brush& brush = brushArray[index];
+    if (!shaderArray[brush.shader].solid)
         return;
 
     Plane* collidingPlane = NULL;
     float collidingDist = 0.0;
 
-    for (int i = 0; i < brush->sideCount; i++)
+    for (int i = 0; i < brush.sideCount; i++)
     {
-        BrushSide* side = &brushSideArray[i + brush->sideOffset];
-        Plane* plane = &planeArray[side->plane];
+        BrushSide& side = brushSideArray[i + brush.sideOffset];
+        Plane& plane = planeArray[side.plane];
 
-        if (glm::dot(plane->normal, pass.oldPosition) - plane->distance < pass.radius)
+        if (glm::dot(plane.normal, pass.oldPosition) - plane.distance < pass.radius)
             continue;
 
-        float dist = glm::dot(plane->normal, pass.position) - plane->distance - pass.radius;
+        float dist = glm::dot(plane.normal, pass.position) - plane.distance - pass.radius;
 
         if (dist > 0.f)
             return;
 
-        if (!shaderArray[side->shader].solid)
+        if (!shaderArray[side.shader].solid)
             continue;
 
         if (collidingPlane == NULL || dist > collidingDist)
         {
-            collidingPlane = plane;
+            collidingPlane = &plane;
             collidingDist = dist;
         }
     }
@@ -815,26 +812,26 @@ void Map::traceNode(int index, TracePass& pass)
 {
     if (index < 0)
     {
-        Leaf* leaf = &leafArray[-index - 1];
-        for (int i = 0; i < leaf->brushCount; i++)
+        Leaf& leaf = leafArray[~index];
+        for (int i = 0; i < leaf.brushCount; i++)
         {
-            traceBrush(leafBrushArray[i + leaf->brushOffset], pass);
+            traceBrush(leafBrushArray[i + leaf.brushOffset], pass);
         }
         return;
     }
 
-    Node* node = &nodeArray[index];
-    Plane* plane = &planeArray[node->plane];
-    float dist = glm::dot(plane->normal, pass.position) - plane->distance;
+    Node& node = nodeArray[index];
+    Plane& plane = planeArray[node.plane];
+    float dist = glm::dot(plane.normal, pass.position) - plane.distance;
 
     if (dist > -pass.radius)
     {
-        traceNode(node->children[0], pass);
+        traceNode(node.children[0], pass);
     }
 
     if (dist < pass.radius)
     {
-        traceNode(node->children[1], pass);
+        traceNode(node.children[1], pass);
     }
 }
 

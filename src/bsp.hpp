@@ -172,7 +172,6 @@ protected:
     void drawPatch(int faceIndex);
 
     void renderFace(int index, RenderPass &pass, bool solid);
-    void renderLeaf(int index, RenderPass &pass, bool solid);
     void renderNode(int index, RenderPass &pass, bool solid);
 
     void traceBrush(int index, TracePass &pass);
