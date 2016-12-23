@@ -294,7 +294,6 @@ Map::Map()
     programLoc["matrix"] = glGetUniformLocation(program, "matrix");
     programLoc["texture"] = glGetUniformLocation(program, "texture");
     programLoc["lightmap"] = glGetUniformLocation(program, "lightmap");
-    programLoc["uselightmap"] = glGetUniformLocation(program, "uselightmap");
 }
 
 bool Map::load(std::string filename)
@@ -437,6 +436,30 @@ bool Map::load(std::string filename)
     if (effectCount > 0)
         PHYSFS_read(file, &effectArray[0], sizeof(Effect), effectCount);
 
+    int lightMapCount = header.lumps[LIGHTMAP].size / (128 * 128 * 3);
+    PHYSFS_seek(file, header.lumps[LIGHTMAP].offset);
+    lightMapArray.resize(lightMapCount + 1);
+    for (int i = 0; i < lightMapCount; i++)
+    {
+        std::array<sf::Uint8, 128 * 128 * 4> rawLightMap;
+        for (int i = 0; i < 128 * 128; i++)
+        {
+            PHYSFS_read(file, &rawLightMap[i * 4], 3, 1);
+            rawLightMap[i * 4 + 3] = 255;
+        }
+        sf::Image image;
+        image.create(128, 128, &rawLightMap[0]);
+        sf::Texture &texture = lightMapArray[i];
+        texture.loadFromImage(image);
+        texture.setRepeated(true);
+        texture.setSmooth(true);
+    }
+    {
+        sf::Image image;
+        image.create(1, 1, sf::Color(85, 85, 85));
+        lightMapArray[lightMapCount].loadFromImage(image);
+    }
+
     int faceCount = header.lumps[FACE].size / sizeof(RawFace);
     int bezierCount = 0;
     int bezierPatchSize = (bezierLevel + 1) * (bezierLevel + 1);
@@ -455,6 +478,8 @@ bool Map::load(std::string filename)
         face.meshIndexOffset = rawFace.meshVertexOffset;
         face.meshIndexCount = rawFace.meshVertexCount;
         face.lightMap = rawFace.lightMap;
+        if (rawFace.lightMap < 0)
+            face.lightMap = lightMapCount;
         switch (rawFace.type)
         {
         case 1:
@@ -531,25 +556,6 @@ bool Map::load(std::string filename)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshIndexBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndexArray.size() * sizeof(GLuint), &meshIndexArray[0], GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    int lightMapCount = header.lumps[LIGHTMAP].size / (128 * 128 * 3);
-    PHYSFS_seek(file, header.lumps[LIGHTMAP].offset);
-    lightMapArray.resize(lightMapCount);
-    for (int i = 0; i < lightMapCount; i++)
-    {
-        std::array<sf::Uint8, 128 * 128 * 4> rawLightMap;
-        for (int i = 0; i < 128 * 128; i++)
-        {
-            PHYSFS_read(file, &rawLightMap[i * 4], 3, 1);
-            rawLightMap[i * 4 + 3] = 255;
-        }
-        sf::Image image;
-        image.create(128, 128, &rawLightMap[0]);
-        sf::Texture &texture = lightMapArray[i];
-        texture.loadFromImage(image);
-        texture.setRepeated(true);
-        texture.setSmooth(true);
-    }
 
     int lightVolCount = header.lumps[LIGHTVOL].size / sizeof(RawLightVol);
     PHYSFS_seek(file, header.lumps[LIGHTVOL].offset);
@@ -668,17 +674,7 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
     glActiveTexture(GL_TEXTURE0);
     sf::Texture::bind(&shaderArray[face.shader].texture);
     glActiveTexture(GL_TEXTURE1);
-
-    if (face.lightMap >= 0)
-    {
-        sf::Texture::bind(&lightMapArray[face.lightMap]);
-        glUniform1i(programLoc["uselightmap"], GL_TRUE);
-    }
-    else
-    {
-        sf::Texture::bind(NULL);
-        glUniform1i(programLoc["uselightmap"], GL_FALSE);
-    }
+    sf::Texture::bind(&lightMapArray[face.lightMap]);
 
     glDrawElements(GL_TRIANGLES, face.meshIndexCount, GL_UNSIGNED_INT, (void*)(long)(face.meshIndexOffset * sizeof(GLuint)));
 

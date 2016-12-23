@@ -21,14 +21,10 @@ static const char * fragSrc = R"GLSL(
 varying vec3 fragNormal;
 uniform sampler2D texture;
 uniform sampler2D lightmap;
-uniform bool uselightmap;
 
 void main() {
 	vec4 texel = texture2D(texture, gl_TexCoord[0].st);
-	if (uselightmap)
-	{
-		texel = texel * 3.0 * texture2D(lightmap, gl_TexCoord[1].st);
-	}
+	texel = texel * 3.0 * texture2D(lightmap, gl_TexCoord[1].st);
 	gl_FragColor = texel;
 }
 )GLSL";
