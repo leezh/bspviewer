@@ -85,7 +85,6 @@ struct Face {
     int meshIndexOffset;
     int meshIndexCount;
     int lightMap;
-    std::vector<int> bezierArray;
     int bezierSize[2];
 };
 
@@ -138,8 +137,6 @@ protected:
     std::map<std::string, GLuint> programLoc;
     VisData visData;
     int bezierLevel;
-    int bezierIndexOffset;
-    int bezierIndexSize;
 
     std::vector<Plane> planeArray;
     std::vector<Node> nodeArray;
@@ -161,7 +158,7 @@ protected:
     unsigned int lightVolSizeY;
     unsigned int lightVolSizeZ;
 
-    void tesselate(int controlOffset, int controlWidth, Vertex* output);
+    void tesselate(int controlOffset, int controlWidth, int vOffset, int iOffset);
 
     bool clusterVisible(int test, int cam);
     int findLeaf(glm::vec3 &pos);

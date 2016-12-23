@@ -74,10 +74,10 @@ const int SURF_ALPHASHADOW  = 0x10000;
 const int SURF_NODLIGHT     = 0x20000;
 const int SURF_SURFDUST     = 0x40000;
 
-const int VertexPosition = offsetof(Vertex, position);
-const int VertexTexCoord = offsetof(Vertex, texCoord);
-const int VertexLMCoord = offsetof(Vertex, lmCoord);
-const int VertexNormalCoord = offsetof(Vertex, normal);
+const void* VertexPosition = (void*)(long)offsetof(Vertex, position);
+const void* VertexTexCoord = (void*)(long)offsetof(Vertex, texCoord);
+const void* VertexLMCoord = (void*)(long)offsetof(Vertex, lmCoord);
+const void* VertexNormalCoord = (void*)(long)offsetof(Vertex, normal);
 
 struct Lump
 {
@@ -144,7 +144,7 @@ Vertex operator*(const Vertex& v1, const float& d)
     return temp;
 }
 
-void Map::tesselate(int controlOffset, int controlWidth, Vertex* output)
+void Map::tesselate(int controlOffset, int controlWidth, int vOffset, int iOffset)
 {
     Vertex controls[9];
     int cIndex = 0;
@@ -162,7 +162,7 @@ void Map::tesselate(int controlOffset, int controlWidth, Vertex* output)
     {
         float a = (float)j / bezierLevel;
         float b = 1.f - a;
-        output[j] = controls[0] * b * b + controls[3] * 2 * b * a + controls[6] * a * a;
+        vertexArray[vOffset + j] = controls[0] * b * b + controls[3] * 2 * b * a + controls[6] * a * a;
     }
 
     for (int i = 1; i <= bezierLevel; ++i)
@@ -183,7 +183,22 @@ void Map::tesselate(int controlOffset, int controlWidth, Vertex* output)
             float a = (float)j / bezierLevel;
             float b = 1.f - a;
 
-            output[i * L1 + j] = temp[0] * b * b + temp[1] * 2 * b * a + temp[2] * a * a;
+            vertexArray[vOffset + i * L1 + j] = temp[0] * b * b + temp[1] * 2 * b * a + temp[2] * a * a;
+        }
+    }
+
+    for (int i = 0; i <= bezierLevel; ++i)
+    {
+        for (int j = 0; j <= bezierLevel; ++j)
+        {
+            int offset = iOffset + (i * bezierLevel + j) * 6;
+            meshIndexArray[offset + 0] = (i    ) * L1 + (j    ) + vOffset;
+            meshIndexArray[offset + 1] = (i    ) * L1 + (j + 1) + vOffset;
+            meshIndexArray[offset + 2] = (i + 1) * L1 + (j + 1) + vOffset;
+
+            meshIndexArray[offset + 3] = (i + 1) * L1 + (j + 1) + vOffset;
+            meshIndexArray[offset + 4] = (i + 1) * L1 + (j    ) + vOffset;
+            meshIndexArray[offset + 5] = (i    ) * L1 + (j    ) + vOffset;
         }
     }
 }
@@ -416,32 +431,6 @@ bool Map::load(std::string filename)
     if (brushSideCount > 0)
         PHYSFS_read(file, &brushSideArray[0], sizeof(BrushSide), brushSideCount);
 
-    int meshVertexCount = header.lumps[MESHVERTEX].size / sizeof(int);
-    PHYSFS_seek(file, header.lumps[MESHVERTEX].offset);
-    bezierIndexOffset = meshVertexCount;
-    bezierIndexSize = bezierLevel * bezierLevel * 6;
-    meshIndexArray.resize(meshVertexCount + bezierIndexSize);
-    if (meshVertexCount > 0)
-        PHYSFS_read(file, &meshIndexArray[0], sizeof(int), meshVertexCount);
-    for (int i = 0; i < bezierLevel; ++i)
-    {
-        int L1 = bezierLevel + 1;
-        for (int j = 0; j < bezierLevel; ++j)
-        {
-            int offset = bezierIndexOffset + (i * bezierLevel + j) * 6;
-            meshIndexArray[offset + 0] = (i    ) * L1 + (j    );
-            meshIndexArray[offset + 1] = (i    ) * L1 + (j + 1);
-            meshIndexArray[offset + 2] = (i + 1) * L1 + (j + 1);
-
-            meshIndexArray[offset + 3] = (i + 1) * L1 + (j + 1);
-            meshIndexArray[offset + 4] = (i + 1) * L1 + (j    );
-            meshIndexArray[offset + 5] = (i    ) * L1 + (j    );
-        }
-    }
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshIndexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndexArray.size() * sizeof(GLuint), &meshIndexArray[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
     int effectCount = header.lumps[EFFECT].size / sizeof(Effect);
     PHYSFS_seek(file, header.lumps[EFFECT].offset);
     effectArray.resize(effectCount);
@@ -451,6 +440,7 @@ bool Map::load(std::string filename)
     int faceCount = header.lumps[FACE].size / sizeof(RawFace);
     int bezierCount = 0;
     int bezierPatchSize = (bezierLevel + 1) * (bezierLevel + 1);
+    int bezierIndexSize = bezierLevel * bezierLevel * 6;
     PHYSFS_seek(file, header.lumps[FACE].offset);
     faceArray.resize(faceCount);
     for (int i = 0; i < faceCount; i++)
@@ -488,17 +478,23 @@ bool Map::load(std::string filename)
             int dimX = (face.bezierSize[0] - 1) / 2;
             int dimY = (face.bezierSize[0] - 1) / 2;
             int size = dimX * dimY;
-            face.bezierArray.reserve(size);
             bezierCount += size;
         }
     }
+
+    int meshVertexCount = header.lumps[MESHVERTEX].size / sizeof(GLuint);
+    PHYSFS_seek(file, header.lumps[MESHVERTEX].offset);
+    meshIndexArray.resize(meshVertexCount + bezierIndexSize * bezierCount);
+    if (meshVertexCount > 0)
+        PHYSFS_read(file, &meshIndexArray[0], sizeof(GLuint), meshVertexCount);
 
     int vertexCount = header.lumps[VERTEX].size / sizeof(Vertex);
     PHYSFS_seek(file, header.lumps[VERTEX].offset);
     vertexArray.resize(vertexCount + bezierCount * bezierPatchSize);
     if (vertexCount > 0)
         PHYSFS_read(file, &vertexArray[0], sizeof(Vertex), vertexCount);
-    for (int i = 0, offset = vertexCount; i < faceCount; i++)
+
+    for (int i = 0, vOffset = vertexCount, iOffset = meshVertexCount; i < faceCount; i++)
     {
         Face &face = faceArray[i];
         if (face.type == Face::Bezier)
@@ -506,20 +502,35 @@ bool Map::load(std::string filename)
             int dimX = (face.bezierSize[0] - 1) / 2;
             int dimY = (face.bezierSize[1] - 1) / 2;
 
-            for (int i = 0, n = 0; n < dimX; n++, i = 2 * n)
+            face.meshIndexOffset = iOffset;
+
+            for (int x = 0, n = 0; n < dimX; n++, x = 2 * n)
             {
-                for (int j = 0, m = 0; m < dimY; m++, j = 2 * m)
+                for (int y = 0, m = 0; m < dimY; m++, y = 2 * m)
                 {
-                    tesselate(face.vertexOffset + i + face.bezierSize[0] * j, face.bezierSize[0], &vertexArray[offset]);
-                    face.bezierArray.push_back(offset);
-                    offset += bezierPatchSize;
+                    tesselate(face.vertexOffset + x + face.bezierSize[0] * y, face.bezierSize[0], vOffset, iOffset);
+                    vOffset += bezierPatchSize;
+                    iOffset += bezierIndexSize;
                 }
+            }
+
+            face.meshIndexCount = iOffset - face.meshIndexOffset;
+        }
+        else
+        {
+            for (int i = 0; i < face.meshIndexCount; i++)
+            {
+                meshIndexArray[face.meshIndexOffset + i] += face.vertexOffset;
             }
         }
     }
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, vertexArray.size() * sizeof(Vertex), &vertexArray[0], GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshIndexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndexArray.size() * sizeof(GLuint), &meshIndexArray[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     int lightMapCount = header.lumps[LIGHTMAP].size / (128 * 128 * 3);
     PHYSFS_seek(file, header.lumps[LIGHTMAP].offset);
@@ -654,7 +665,6 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
     if (!shaderArray[face.shader].render)
         return;
 
-    glFrontFace(GL_CW);
     glActiveTexture(GL_TEXTURE0);
     sf::Texture::bind(&shaderArray[face.shader].texture);
     glActiveTexture(GL_TEXTURE1);
@@ -670,25 +680,7 @@ void Map::renderFace(int index, RenderPass& pass, bool solid)
         glUniform1i(programLoc["uselightmap"], GL_FALSE);
     }
 
-    if (face.type == Face::Brush || face.type == Face::Model)
-    {
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexPosition));
-        //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexNormal));
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexTexCoord));
-        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.vertexOffset * sizeof(Vertex) + VertexLMCoord));
-        glDrawElements(GL_TRIANGLES, face.meshIndexCount, GL_UNSIGNED_INT, (void*)(long)(face.meshIndexOffset * sizeof(GLuint)));
-    }
-    else if (face.type == Face::Bezier)
-    {
-        for (int i = 0; i < face.bezierArray.size(); i++)
-        {
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexPosition));
-            //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexNormal));
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexTexCoord));
-            glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(long)(face.bezierArray[i] * sizeof(Vertex) + VertexLMCoord));
-            glDrawElements(GL_TRIANGLES, bezierIndexSize, GL_UNSIGNED_INT, (void*)(long)(bezierIndexOffset * sizeof(GLuint)));
-        }
-    }
+    glDrawElements(GL_TRIANGLES, face.meshIndexCount, GL_UNSIGNED_INT, (void*)(long)(face.meshIndexOffset * sizeof(GLuint)));
 
     pass.renderedFaces[index] = true;
 }
@@ -731,6 +723,7 @@ void Map::renderNode(int index, RenderPass& pass, bool solid)
 
 void Map::renderWorld(glm::mat4 matrix, glm::vec3 pos)
 {
+    glFrontFace(GL_CW);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
@@ -748,6 +741,10 @@ void Map::renderWorld(glm::mat4 matrix, glm::vec3 pos)
     glUniformMatrix4fv(programLoc["matrix"], 1, GL_FALSE, &matrix[0][0]);
     glUniform1i(programLoc["texture"], 0);
     glUniform1i(programLoc["lightmap"], 1);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), VertexPosition);
+    //glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE,  sizeof(Vertex), VertexNormal);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), VertexTexCoord);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), VertexLMCoord);
 
     RenderPass pass(this, pos, matrix);
     pass.cluster = leafArray[findLeaf(pos)].cluster;
