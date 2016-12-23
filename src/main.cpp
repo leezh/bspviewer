@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 {
     if (argc < 2 || argc > 3)
     {
-        std::cout << "Usage: bspviewer [path_to_data_folder [map_to_load]]" << std::endl;
+        std::cout << "Usage: bspviewer [Q3DataPath [Map]]" << std::endl;
         return -1;
     }
 

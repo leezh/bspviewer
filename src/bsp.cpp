@@ -371,7 +371,6 @@ bool Map::load(std::string filename)
                         shader.texture.setRepeated(true);
                         shader.texture.setSmooth(true);
                     }
-                    std::cout << shader.name << std::endl;
                 }
                 else
                 {
