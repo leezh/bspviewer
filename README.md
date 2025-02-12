@@ -11,16 +11,8 @@ Ensure that the following packages and their development files are installed pro
   * GNU GCC C++ and GNU Make on Linux
   * MinGW or Visual Studio C++ on Windows
   * CMake
-  * SFML
-  * PhysicsFS
-  * GLEW
-  * GLM
 
-On Ubuntu they can all be installed using:
-
-    sudo apt install g++ cmake libsfml-dev libphysfs-dev libglew-dev libglm-dev
-
-On Windows you can make a folder called `libs/` and place downloaded dependencies there. There are no official builds for PhysicsFS and may require building before hand.
+Most of the libraries used should be downloaded automatically when building but SFML may require some additional packages on Linux first. You should be able to find more details [here](https://www.sfml-dev.org/tutorials/3.0/getting-started/cmake/#requirements).
 
 To build use the following commands:
 
@@ -66,4 +58,3 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 MA 02110-1301, USA.
-

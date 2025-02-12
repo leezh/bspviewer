@@ -1,21 +1,53 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.28)
+project(bspviewer LANGUAGES C CXX)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+include(FetchContent)
 
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build (Debug or Release)" FORCE)
-endif()
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG v2.0.8
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM
+)
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM
+)
+FetchContent_Declare(
+    PhysicsFS
+    GIT_REPOSITORY https://github.com/icculus/physfs.git
+    GIT_TAG release-3.2.0
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM
+)
+FetchContent_Declare(
+    SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG 3.0.0
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM
+)
+FetchContent_MakeAvailable(
+    glad
+    glm
+    PhysicsFS
+    SFML
+)
+add_subdirectory("${glad_SOURCE_DIR}/cmake" glad_cmake)
+glad_add_library(glad_gl REPRODUCIBLE API gl:core=3.3)
 
-project(bspviewer CXX)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-file(GLOB CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/libs/*")
-
-find_package(PhysFS REQUIRED)
-find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(SFML 2 REQUIRED system window graphics)
-find_path(GLM_INCLUDE_DIR glm/glm.hpp HINTS CMAKE_PREFIX_PATH)
-
-set(bspviewer_src
+add_executable(bspviewer)
+target_compile_features(bspviewer PRIVATE cxx_std_17)
+target_sources(
+    bspviewer PRIVATE
 	src/main.cpp
 	src/frutsum.hpp
 	src/frutsum.cpp
@@ -25,26 +57,15 @@ set(bspviewer_src
 	src/bsp.cpp
 	src/shaders.inc
 )
-
-add_executable(bspviewer ${bspviewer_src})
-target_compile_features(bspviewer PUBLIC
-	cxx_raw_string_literals
-	cxx_defaulted_move_initializers
-)
-target_compile_definitions(bspviewer PUBLIC
-	GLM_FORCE_CXX11
+target_compile_definitions(bspviewer PRIVATE
+	GLM_FORCE_CXX17
 	GLM_FORCE_SWIZZLE
 )
-target_include_directories(bspviewer PUBLIC
-	${PHYSFS_INCLUDE_DIR}
-	${GLEW_INCLUDE_DIRS}
-	${SFML_INCLUDE_DIR}
-	${GLM_INCLUDE_DIR}
-	"${CMAKE_SOURCE_DIR}/libs"
-)
-target_link_libraries(bspviewer
-	${PHYSFS_LIBRARY}
-	${SFML_LIBRARIES}
-	${GLEW_LIBRARIES}
-	${OPENGL_LIBRARIES}
+target_link_libraries(bspviewer PRIVATE
+	glm::glm
+	SFML::System
+	SFML::Window
+	SFML::Graphics
+	PhysFS::PhysFS-static
+	glad_gl
 )

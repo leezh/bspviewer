@@ -1,27 +1,4 @@
-libs/
-
-# C++
-*.o
-*.obj
-*.gch
-*.pch
-
-# CMake
-build/
-CMakeLists.txt.user*
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Makefile
-cmake_install.cmake
-
-# Linux
-*~
-.directory
-.Trash-*
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
+/.cache/
+/build/
+/compile_commands.json
+/CMakeLists.txt.user

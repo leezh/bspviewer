@@ -1,8 +1,10 @@
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <array>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
+#include <SFML/Graphics/Image.hpp>
 #include <physfs.h>
 #include "filestream.hpp"
 #include "bsp.hpp"
@@ -303,13 +305,13 @@ bool Map::load(std::string filename)
     PHYSFS_File* file = PHYSFS_openRead(filename.c_str());
     if (!file)
     {
-        std::cout << filename.c_str() << ": " << PHYSFS_getLastError() << std::endl;
+        std::cout << filename.c_str() << ": " << PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()) << std::endl;
         return false;
     }
 
     PHYSFS_seek(file, 0);
     Header header;
-    PHYSFS_read(file, &header, sizeof(Header), 1);
+    PHYSFS_readBytes(file, &header, sizeof(Header));
     if (std::string(header.magic, 4) != "IBSP")
     {
         std::cout << "Invalid file" << std::endl;
@@ -324,7 +326,7 @@ bool Map::load(std::string filename)
     PHYSFS_seek(file, header.lumps[ENTITY].offset);
     std::string rawEntity;
     rawEntity.resize(header.lumps[ENTITY].size);
-    PHYSFS_read(file, &rawEntity[0], 1, header.lumps[ENTITY].size);
+    PHYSFS_readBytes(file, &rawEntity[0], header.lumps[ENTITY].size);
 
     int shaderCount = header.lumps[SHADER].size / sizeof(RawShader);
     PHYSFS_seek(file, header.lumps[SHADER].offset);
@@ -332,7 +334,7 @@ bool Map::load(std::string filename)
     for (int i = 0; i < shaderCount; i++)
     {
         RawShader rawshader;
-        PHYSFS_read(file, &rawshader, sizeof(RawShader), 1);
+        PHYSFS_readBytes(file, &rawshader, sizeof(RawShader));
         rawshader.name[63] = '\0';
         Shader shader;
         shader.render = true;
@@ -365,9 +367,7 @@ bool Map::load(std::string filename)
                     if (shader.texture.loadFromStream(filestream))
                     {
                         shader.render = true;
-#if SFML_VERSION_MAJOR > 2 || (SFML_VERSION_MAJOR == 2 && SFML_VERSION_MINOR >= 4)
                         shader.texture.generateMipmap();
-#endif
                         shader.texture.setRepeated(true);
                         shader.texture.setSmooth(true);
                     }
@@ -385,78 +385,77 @@ bool Map::load(std::string filename)
     PHYSFS_seek(file, header.lumps[PLANE].offset);
     planeArray.resize(planeCount);
     if (planeCount > 0)
-        PHYSFS_read(file, &planeArray[0], sizeof(Plane), planeCount);
+        PHYSFS_readBytes(file, &planeArray[0], sizeof(Plane) * planeCount);
 
     int nodeCount = header.lumps[NODE].size / sizeof(Node);
     PHYSFS_seek(file, header.lumps[NODE].offset);
     nodeArray.resize(nodeCount);
     if (nodeCount > 0)
-        PHYSFS_read(file, &nodeArray[0], sizeof(Node), nodeCount);
+        PHYSFS_readBytes(file, &nodeArray[0], sizeof(Node) * nodeCount);
 
     int leafCount = header.lumps[LEAF].size / sizeof(Leaf);
     PHYSFS_seek(file, header.lumps[LEAF].offset);
     leafArray.resize(leafCount);
     if (leafCount > 0)
-        PHYSFS_read(file, &leafArray[0], sizeof(Leaf), leafCount);
+        PHYSFS_readBytes(file, &leafArray[0], sizeof(Leaf) * leafCount);
 
     int leafFaceCount = header.lumps[LEAFFACE].size / sizeof(int);
     PHYSFS_seek(file, header.lumps[LEAFFACE].offset);
     leafFaceArray.resize(leafFaceCount);
     if (leafFaceCount > 0)
-        PHYSFS_read(file, &leafFaceArray[0], sizeof(int), leafFaceCount);
+        PHYSFS_readBytes(file, &leafFaceArray[0], sizeof(int) * leafFaceCount);
 
     int leafBrushCount = header.lumps[LEAFBRUSH].size / sizeof(int);
     PHYSFS_seek(file, header.lumps[LEAFBRUSH].offset);
     leafBrushArray.resize(leafBrushCount);
     if (leafBrushCount > 0)
-        PHYSFS_read(file, &leafBrushArray[0], sizeof(int), leafBrushCount);
+        PHYSFS_readBytes(file, &leafBrushArray[0], sizeof(int) * leafBrushCount);
 
     int modelCount = header.lumps[MODEL].size / sizeof(Model);
     PHYSFS_seek(file, header.lumps[MODEL].offset);
     modelArray.resize(modelCount);
     if (modelCount > 0)
-        PHYSFS_read(file, &modelArray[0], sizeof(Model), modelCount);
+        PHYSFS_readBytes(file, &modelArray[0], sizeof(Model) * modelCount);
 
     int brushCount = header.lumps[BRUSH].size / sizeof(Brush);
     PHYSFS_seek(file, header.lumps[BRUSH].offset);
     brushArray.resize(brushCount);
     if (brushCount > 0)
-        PHYSFS_read(file, &brushArray[0], sizeof(Brush), brushCount);
+        PHYSFS_readBytes(file, &brushArray[0], sizeof(Brush) * brushCount);
 
     int brushSideCount = header.lumps[BRUSHSIDE].size / sizeof(BrushSide);
     PHYSFS_seek(file, header.lumps[BRUSHSIDE].offset);
     brushSideArray.resize(brushSideCount);
     if (brushSideCount > 0)
-        PHYSFS_read(file, &brushSideArray[0], sizeof(BrushSide), brushSideCount);
+        PHYSFS_readBytes(file, &brushSideArray[0], sizeof(BrushSide) * brushSideCount);
 
     int effectCount = header.lumps[EFFECT].size / sizeof(Effect);
     PHYSFS_seek(file, header.lumps[EFFECT].offset);
     effectArray.resize(effectCount);
     if (effectCount > 0)
-        PHYSFS_read(file, &effectArray[0], sizeof(Effect), effectCount);
+        PHYSFS_readBytes(file, &effectArray[0], sizeof(Effect) * effectCount);
 
     int lightMapCount = header.lumps[LIGHTMAP].size / (128 * 128 * 3);
     PHYSFS_seek(file, header.lumps[LIGHTMAP].offset);
-    lightMapArray.resize(lightMapCount + 1);
+    lightMapArray.clear();
+    lightMapArray.reserve(lightMapCount + 1);
     for (int i = 0; i < lightMapCount; i++)
     {
-        std::array<sf::Uint8, 128 * 128 * 4> rawLightMap;
+        std::array<std::uint8_t, 128 * 128 * 4> rawLightMap;
         for (int i = 0; i < 128 * 128; i++)
         {
-            PHYSFS_read(file, &rawLightMap[i * 4], 3, 1);
+            PHYSFS_readBytes(file, &rawLightMap[i * 4], 3);
             rawLightMap[i * 4 + 3] = 255;
         }
-        sf::Image image;
-        image.create(128, 128, &rawLightMap[0]);
-        sf::Texture &texture = lightMapArray[i];
-        texture.loadFromImage(image);
+        sf::Texture &texture = lightMapArray.emplace_back(sf::Texture({128, 128}));
+        texture.update(&rawLightMap[0]);
         texture.setRepeated(true);
         texture.setSmooth(true);
     }
     {
-        sf::Image image;
-        image.create(1, 1, sf::Color(85, 85, 85));
-        lightMapArray[lightMapCount].loadFromImage(image);
+        std::array<std::uint8_t, 4> rawLightMap = {85, 85, 85, 255};
+        sf::Texture &texture = lightMapArray.emplace_back(sf::Texture({128, 128}));
+        texture.update(&rawLightMap[0]);
     }
 
     int faceCount = header.lumps[FACE].size / sizeof(RawFace);
@@ -468,7 +467,7 @@ bool Map::load(std::string filename)
     for (int i = 0; i < faceCount; i++)
     {
         RawFace rawFace;
-        PHYSFS_read(file, &rawFace, sizeof(RawFace), 1);
+        PHYSFS_readBytes(file, &rawFace, sizeof(RawFace));
         Face &face = faceArray[i];
         face.shader = rawFace.shader;
         face.effect = rawFace.effect;
@@ -510,13 +509,13 @@ bool Map::load(std::string filename)
     PHYSFS_seek(file, header.lumps[MESHVERTEX].offset);
     meshIndexArray.resize(meshVertexCount + bezierIndexSize * bezierCount);
     if (meshVertexCount > 0)
-        PHYSFS_read(file, &meshIndexArray[0], sizeof(GLuint), meshVertexCount);
+        PHYSFS_readBytes(file, &meshIndexArray[0], sizeof(GLuint) * meshVertexCount);
 
     int vertexCount = header.lumps[VERTEX].size / sizeof(Vertex);
     PHYSFS_seek(file, header.lumps[VERTEX].offset);
     vertexArray.resize(vertexCount + bezierCount * bezierPatchSize);
     if (vertexCount > 0)
-        PHYSFS_read(file, &vertexArray[0], sizeof(Vertex), vertexCount);
+        PHYSFS_readBytes(file, &vertexArray[0], sizeof(Vertex) * vertexCount);
 
     for (int i = 0, vOffset = vertexCount, iOffset = meshVertexCount; i < faceCount; i++)
     {
@@ -562,7 +561,7 @@ bool Map::load(std::string filename)
     for (int i = 0; i < lightVolCount; i++)
     {
         RawLightVol rawLightVol;
-        PHYSFS_read(file, &rawLightVol, sizeof(RawLightVol), 1);
+        PHYSFS_readBytes(file, &rawLightVol, sizeof(RawLightVol));
         LightVol lightVol;
 
         lightVol.ambient.x = rawLightVol.ambient[0];
@@ -589,11 +588,11 @@ bool Map::load(std::string filename)
     PHYSFS_seek(file, header.lumps[VISDATA].offset);
     if (header.lumps[VISDATA].size > 0)
     {
-        PHYSFS_read(file, &visData.clusterCount, sizeof(int), 1);
-        PHYSFS_read(file, &visData.bytesPerCluster, sizeof(int), 1);
+        PHYSFS_readBytes(file, &visData.clusterCount, sizeof(int));
+        PHYSFS_readBytes(file, &visData.bytesPerCluster, sizeof(int));
         unsigned int size = visData.clusterCount * visData.bytesPerCluster;
         std::vector<char> rawVisData(size);
-        PHYSFS_read(file, &rawVisData[0], size, 1);
+        PHYSFS_readBytes(file, &rawVisData[0], size);
 
         visData.data.resize(size * 8, false);
         for (unsigned long int byteIndex = 0; byteIndex < size; byteIndex++)

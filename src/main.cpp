@@ -1,9 +1,12 @@
+#include <SFML/Window/WindowEnums.hpp>
 #include <iostream>
+#include <optional>
 #include <physfs.h>
-#include <GL/glew.h>
+#include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <SFML/Window.hpp>
+#include <SFML/Window/Context.hpp>
 #include "bsp.hpp"
 
 #define PI 3.14159265359f
@@ -63,12 +66,12 @@ int main(int argc, char *argv[])
     sf::ContextSettings settings;
     settings.depthBits = 24;
 
-    int width = 800;
-    int height = 600;
-    sf::Window window(sf::VideoMode(width, height), "BSPViewer", sf::Style::Default, settings);
+    unsigned int width = 800;
+    unsigned int height = 600;
+    sf::Window window(sf::VideoMode({width, height}), "BSPViewer", sf::State::Windowed, settings);
     window.setMouseCursorVisible(false);
 
-    glewInit();
+    gladLoadGL(sf::Context::getFunction);
 
     Map map;
     if (!map.load(argv[2]))
@@ -88,41 +91,40 @@ int main(int argc, char *argv[])
     while (window.isOpen())
     {
         // Events
-        sf::Event event;
-        while (window.pollEvent(event))
+        while (const auto event = window.pollEvent())
         {
-            switch (event.type)
+            if (event->is<sf::Event::Closed>())
             {
-            case sf::Event::Closed:
                 window.close();
-                break;
-            case sf::Event::Resized:
-                width = event.size.width;
-                height = event.size.height;
+            }
+            else if (const auto *resize = event->getIf<sf::Event::Resized>())
+            {
+                width = resize->size.x;
+                height = resize->size.y;
                 glViewport(0, 0, width, height);
-                break;
-            case sf::Event::MouseMoved:
-                yaw += (event.mouseMove.x - width / 2) * 0.1f;
-                pitch += (event.mouseMove.y - height / 2) * 0.1f;
+            }
+            else if (const auto *mouseMove = event->getIf<sf::Event::MouseMoved>())
+            {
+                yaw += (mouseMove->position.x - float(width) / 2) * 0.1f;
+                pitch += (mouseMove->position.y - float(height) / 2) * 0.1f;
                 if (yaw > 180.f) yaw -= 360.f;
                 if (yaw < -180.f) yaw += 360.f;
                 if (pitch > 90.f) pitch = 90.f;
                 if (pitch < -90.f) pitch = -90.f;
-                break;
-            case sf::Event::KeyPressed:
-                switch (event.key.code)
+            }
+            else if (const auto *keyPress = event->getIf<sf::Event::KeyPressed>())
+            {
+                switch (keyPress->code)
                 {
-                case sf::Keyboard::E:
+                case sf::Keyboard::Key::E:
                     collision = !collision;
                     break;
-                case sf::Keyboard::Escape:
+                case sf::Keyboard::Key::Escape:
                     window.close();
                     break;
+                default:
+                    break;
                 }
-
-                break;
-            default:
-                break;
             }
         }
         sf::Mouse::setPosition(sf::Vector2i(width, height) / 2, window);
@@ -136,17 +138,17 @@ int main(int argc, char *argv[])
         float speed = 200.f;
         glm::vec3 oldPos = position;
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
             position += forward * elapsed * speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
             position -= forward * elapsed * speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
             position += right * elapsed * speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
             position -= right * elapsed * speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
             position += up * elapsed * speed;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift))
             position -= up * elapsed * speed;
 
         if (collision)

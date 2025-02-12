@@ -5,7 +5,7 @@
 #include <vector>
 #include <map>
 #include <glm/glm.hpp>
-#include <GL/glew.h>
+#include <glad/gl.h>
 #include <SFML/Graphics/Texture.hpp>
 #include "frutsum.hpp"
 

@@ -1,4 +1,5 @@
 #include "filestream.hpp"
+#include <physfs.h>
 
 FileStream::FileStream(const std::string& path) :
     file(PHYSFS_openRead(path.c_str()))
@@ -15,13 +16,13 @@ bool FileStream::isOpen()
     return (file != NULL);
 }
 
-sf::Int64 FileStream::read(void* data, sf::Int64 size)
+std::optional<std::size_t> FileStream::read(void* data, std::size_t size)
 {
     if (!file)
     {
         return 0;
     }
-    PHYSFS_sint64 readBytes = PHYSFS_read(file, data, 1, size);
+    PHYSFS_sint64 readBytes = PHYSFS_readBytes(file, data, size);
     if (readBytes < 0)
     {
         return 0;
@@ -29,7 +30,7 @@ sf::Int64 FileStream::read(void* data, sf::Int64 size)
     return readBytes;
 }
 
-sf::Int64 FileStream::seek(sf::Int64 position)
+std::optional<std::size_t> FileStream::seek(std::size_t position)
 {
     if (!file)
     {
@@ -42,7 +43,7 @@ sf::Int64 FileStream::seek(sf::Int64 position)
     return position;
 }
 
-sf::Int64 FileStream::tell()
+std::optional<std::size_t> FileStream::tell()
 {
     if (!file)
     {
@@ -51,7 +52,7 @@ sf::Int64 FileStream::tell()
     return PHYSFS_tell(file);
 }
 
-sf::Int64 FileStream::getSize()
+std::optional<std::size_t> FileStream::getSize()
 {
     if (!file)
     {
