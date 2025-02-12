@@ -42,7 +42,7 @@ To load a map use: `bspviewer /path/to/baseq3/ /maps/q3ctf1.bsp`
 
 BSPViewer
 
-Copyright (C) 2010-2016 Lee Zher Huei (leezh@leezh.me)
+Copyright (C) 2010-2025 Lee Zher Huei (lee.zh.92@gmail.com)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
